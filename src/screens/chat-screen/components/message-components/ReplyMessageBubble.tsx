@@ -1,0 +1,130 @@
+import { useTailwind } from '@/theme/useTailwind';
+import React, { useCallback, useMemo } from 'react';
+import { Pressable } from 'react-native';
+import Animated from 'react-native-reanimated';
+
+import { useChatWindowContext } from '@/context';
+import { AttachFileIcon, CameraIcon, VideoCall, VoiceNote } from '@/svg-icons';
+import { Message, MessageContentAttributes } from '@/types';
+import { getQuotedImages } from '@/utils/customMessageMetadata';
+import { ImageThumbnail } from './ImageBubble';
+import { isMarkdown } from '@/utils';
+import { expandTabs } from '@/utils/expandTabs';
+import { Icon } from '@/components-next';
+import { MarkdownBubble } from './MarkdownBubble';
+import { MESSAGE_VARIANTS, TEXT_MAX_WIDTH } from '@/constants';
+
+type ReplyMessageBubbleProps = {
+  replyMessage: Message;
+  variant: string;
+  quoteAttributes?: MessageContentAttributes | null;
+  conversationId: number;
+};
+
+const variantBaseMap = {
+  [MESSAGE_VARIANTS.AGENT]: 'bg-white',
+  [MESSAGE_VARIANTS.USER]: 'bg-blackA-A7',
+};
+
+export const ReplyMessageBubble = (props: ReplyMessageBubbleProps) => {
+  const tailwind = useTailwind();
+  const replyMessageItem = props.replyMessage as Message;
+
+  const quotedImages = useMemo(
+    () => getQuotedImages(replyMessageItem, props.quoteAttributes, props.conversationId),
+    [replyMessageItem, props.quoteAttributes, props.conversationId],
+  );
+
+  const { setScrollToMessageId } = useChatWindowContext();
+
+  const hasAttachments = useMemo(
+    () => replyMessageItem?.attachments?.length > 0,
+    [replyMessageItem?.attachments],
+  );
+
+  const renderAttachmentSection = () => {
+    switch (replyMessageItem.attachments[0].fileType) {
+      case 'audio':
+        return <Icon size={15} icon={<VoiceNote />} />;
+      case 'video':
+        return <Icon size={15} icon={<VideoCall />} />;
+      case 'image':
+        return <Icon size={15} icon={<CameraIcon />} />;
+      case 'file':
+        return <Icon size={15} icon={<AttachFileIcon />} />;
+      default:
+        return null;
+    }
+  };
+
+  const handleScrollToMessage = useCallback(() => {
+    if (replyMessageItem?.id) {
+      setScrollToMessageId(replyMessageItem.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [replyMessageItem?.id]);
+
+  return (
+    <Pressable
+      onPress={handleScrollToMessage}
+      style={[
+        tailwind.style(
+          'relative max-w-[300px] pl-2 pr-2.5 py-2 mb-2 rounded-[10px] overflow-hidden -ml-[5px]',
+          `max-w-[${TEXT_MAX_WIDTH}px]`,
+          variantBaseMap[props.variant],
+        ),
+      ]}>
+      <Animated.View style={tailwind.style('flex flex-row')}>
+        <Animated.View style={tailwind.style('w-[3px] bg-gray-300 h-auto rounded-[4px]')} />
+        <Animated.View style={tailwind.style('pl-2.5')}>
+          <Animated.Text
+            style={tailwind.style(
+              'text-cxs font-inter-420-20 leading-[14.95px] tracking-[0.32px] text-blackA-A11',
+            )}>
+            Replying to {replyMessageItem?.sender?.name}
+          </Animated.Text>
+          {hasAttachments ? (
+            <Animated.View style={tailwind.style('py-[3px] flex flex-row items-center')}>
+              {renderAttachmentSection()}
+              <Animated.Text
+                style={tailwind.style(
+                  'text-[14px] font-inter-normal-20 leading-[19.6px] tracking-[0.16px] text-gray-950 pl-1.5',
+                )}>
+                {replyMessageItem?.attachments[0].fileType}
+              </Animated.Text>
+            </Animated.View>
+          ) : null}
+
+          {quotedImages.length > 0 && (
+            <Animated.View style={tailwind.style('flex-row flex-wrap gap-1 py-1')}>
+              {quotedImages.map((uri, index) => (
+                <ImageThumbnail key={index} imageSrc={uri} />
+              ))}
+            </Animated.View>
+          )}
+          {quotedImages.length > 1 && (
+            <Animated.Text style={tailwind.style('text-xs text-gray-950')}>
+              多张候选图片，原记录未提供精确引用
+            </Animated.Text>
+          )}
+          {replyMessageItem?.content ? (
+            isMarkdown(replyMessageItem?.content) ? (
+              <MarkdownBubble
+                messageContent={replyMessageItem?.content?.split('\n')?.[0]}
+                variant={props.variant}
+              />
+            ) : (
+              <Animated.Text
+                numberOfLines={1}
+                style={tailwind.style(
+                  'text-[14px] font-inter-normal-20 leading-[19.6px] tracking-[0.16px] text-gray-950',
+                )}>
+                {expandTabs(replyMessageItem.content)}
+              </Animated.Text>
+            )
+          ) : null}
+        </Animated.View>
+      </Animated.View>
+    </Pressable>
+  );
+};

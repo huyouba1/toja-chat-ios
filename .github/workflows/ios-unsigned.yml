@@ -1,0 +1,44 @@
+name: Build unsigned iPhone IPA
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ios-unsigned-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    # 使用标准 macOS runner；公开仓库计算免费，私有仓库需先确认额度/计费。
+    runs-on: macos-26-intel
+    timeout-minutes: 60
+    env:
+      CI: '1'
+      EXPO_PUBLIC_IOS_FREE_SIGNING: 'true'
+      EXPO_NO_TELEMETRY: '1'
+      SENTRY_DISABLE_AUTO_UPLOAD: 'true'
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - uses: actions/checkout@f53f5227a9e83886ab598c617f3c170fab62f0d3 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '24'
+      - name: Install frozen dependencies
+        run: |
+          npm install --global pnpm@10.11.0
+          pnpm install --frozen-lockfile --network-concurrency=4 --child-concurrency=2
+      - name: Verify source
+        run: |
+          pnpm exec tsc --noEmit
+          pnpm exec jest --runInBand
+      - name: Build device IPA without signing credentials
+        run: bash scripts/build-ios-unsigned.sh
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: toja-iphone-unsigned
+          path: |
+            dist/TojaChat-unsigned.ipa
+            dist/TojaChat-unsigned.ipa.sha256
+          if-no-files-found: error
+          retention-days: 1

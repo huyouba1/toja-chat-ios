@@ -1,0 +1,58 @@
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+
+# Native
+*.orig.*
+*.aab
+*.ipa
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+ios/
+android/
+
+google-services.json
+GoogleService-Info.plist
+.env
+.env.local
+
+!modules/chatwoot-calls/ios/
+!modules/chatwoot-calls/android/
+modules/chatwoot-calls/android/build/
+
+# 本地IPA打包边界检查的Python缓存不进入源码。
+__pycache__/
+*.pyc
+
+# 本地项目/运维记忆不公开。
+PROJECT_MEMORY.md
+.env*
+!.env.example

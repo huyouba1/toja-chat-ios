@@ -1,0 +1,17 @@
+import { PressableProps } from 'react-native';
+import { SharedValue } from 'react-native-reanimated';
+
+export type SendMessageButtonProps = PressableProps & {
+  variant?: 'default' | 'copilot';
+};
+
+export type AddCommandButtonProps = PressableProps & {
+  derivedAddMenuOptionStateValue: SharedValue<number>;
+  glass?: boolean;
+};
+
+export type PhotosCommandButtonProps = PressableProps & {};
+
+export type VoiceRecordButtonProps = PressableProps & {
+  glass?: boolean;
+};

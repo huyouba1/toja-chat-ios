@@ -1,0 +1,178 @@
+import { useTailwind } from '@/theme/useTailwind';
+import React, { useState } from 'react';
+import { ImageSourcePropType, ImageURISource, Text, View, ViewProps } from 'react-native';
+import type { ImageProps } from 'expo-image';
+
+import { avatarTheme } from '@/theme';
+import { Channel } from '@/types';
+import { UserIcon } from '@/svg-icons';
+import { cx, isPhoneNumberName, styleAdapter } from '@/utils';
+
+import { AvatarImage } from './AvatarImage';
+import { AvatarStatus } from './AvatarStatus';
+
+export type AvatarSizes = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl';
+export type AvatarStatusType = 'online' | 'away' | 'offline' | 'typing';
+
+export const removeEmoji = (text: string) => {
+  if (text) {
+    return text
+      .replace(
+        /([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g,
+        '',
+      )
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+  return '';
+};
+
+export function getInitials(name: string) {
+  const userNameWithoutEmoji = removeEmoji(name).trimStart();
+  if (!userNameWithoutEmoji) {
+    return;
+  }
+  const [firstName, lastName] = userNameWithoutEmoji.split(' ');
+  const initials =
+    firstName && lastName
+      ? `${firstName.charAt(0)}${lastName.charAt(0)}`
+      : `${firstName.charAt(0)}${firstName.charAt(1)}`;
+
+  return initials.toUpperCase();
+}
+
+const ONE_LETTER_INITIAL_SIZES: AvatarSizes[] = ['xs', 'sm', 'md'];
+
+export interface AvatarProps extends ViewProps {
+  /**
+   * React Native Image component Props, except for source
+   */
+  imageProps: Omit<ImageProps, 'source'>;
+  /**
+   * The image source (either a remote URL or a local file resource).
+   * Check https://reactnative.dev/docs/image#imagesource
+   */
+  src: ImageSourcePropType;
+  /**
+   * How large should avatar be?
+   *
+   * @default xl
+   */
+  size: AvatarSizes;
+  initialsClassName?: string;
+  /**
+   * If `true`, Avatar looks like a squared.
+   *
+   * @default false
+   */
+  squared: boolean;
+  /**
+   * Name prop used for `alt` & calculate placeholder initials.
+   */
+  name: string;
+  /**
+   * Shows AvatarBadge with the given type
+   *
+   * @default none
+   */
+  status: AvatarStatusType;
+  /**
+   * StatusIndicator's Background Color & StatusIndicator Ring Color.
+   *
+   * @default "text-white"
+   */
+  parentsBackground: string;
+  /**
+   * The Avatar Channel Indicator, more likely for
+   */
+  channel: Channel;
+  /**
+   * Content shown in place of the initials, behind the image while it loads and after it fails
+   */
+  fallback: React.ReactNode;
+}
+
+export const Avatar: React.FC<Partial<AvatarProps>> = props => {
+  const tailwind = useTailwind();
+  const {
+    size = 'xl',
+    squared = false,
+    name,
+    src,
+    status,
+    parentsBackground = 'text-white',
+    imageProps = {},
+    channel,
+    fallback,
+    style,
+    initialsClassName,
+    ...boxProps
+  } = props;
+
+  const isSquared = squared;
+  const isSourceAvailable = !!src;
+
+  const [imageAvailable, setImageAvailable] = useState(isSourceAvailable);
+  const loadFallback = () => setImageAvailable(false);
+
+  return (
+    <View
+      style={[
+        avatarTheme.borderRadius.size[size],
+        tailwind.style(
+          cx(avatarTheme.base, avatarTheme.size[size], !isSquared ? avatarTheme.circular : ''),
+        ),
+        styleAdapter(style),
+      ]}
+      {...boxProps}>
+      {fallback !== undefined ? (
+        <>
+          {fallback}
+          {imageAvailable && src ? (
+            <View style={tailwind.style('absolute inset-0')}>
+              <AvatarImage
+                size={size}
+                imageProps={imageProps}
+                src={src as ImageURISource}
+                squared={isSquared}
+                handleFallback={loadFallback}
+              />
+            </View>
+          ) : null}
+        </>
+      ) : imageAvailable && src ? (
+        <AvatarImage
+          size={size}
+          imageProps={imageProps}
+          src={src as ImageURISource}
+          squared={isSquared}
+          handleFallback={loadFallback}
+        />
+      ) : !name || isPhoneNumberName(name) ? (
+        <View style={tailwind.style(avatarTheme.defaultUserIcon[size], 'aspect-square')}>
+          <UserIcon stroke={tailwind.color('text-gray-800')} />
+        </View>
+      ) : (
+        <Text
+          style={[
+            tailwind.style(
+              cx(
+                'w-full',
+                avatarTheme.initials.base,
+                avatarTheme.initials.size[size],
+                'font-inter-medium-24',
+                initialsClassName,
+              ),
+            ),
+          ]}
+          numberOfLines={1}
+          allowFontScaling={false}>
+          {ONE_LETTER_INITIAL_SIZES.includes(size)
+            ? getInitials(name)?.charAt(0)
+            : getInitials(name)}
+        </Text>
+      )}
+      {status && <AvatarStatus parentsBackground={parentsBackground} size={size} status={status} />}
+    </View>
+  );
+};
